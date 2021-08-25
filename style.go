@@ -23,6 +23,36 @@ var DefaultStyle = func() *Style {
 	}
 }
 
+// DefaultCaptionStyle default caption style setting
+var DefaultCaptionStyle = func() *Style {
+	return &Style{
+		Color:      DefaultColor,
+		Border:     NoBorder(),
+		LineHeight: DefaultLineHeight,
+		Padding:    NewPaddingY(DefaultPadding),
+		Align:      LEFT,
+		VAlign:     TOP,
+		Font: &Font{
+			Size: DefaultFontSize,
+		},
+	}
+}
+
+// DefaultFooterStyle default table footer style setting
+var DefaultFooterStyle = func() *Style {
+	return &Style{
+		Color:      DefaultColor,
+		Border:     NoBorder(),
+		LineHeight: DefaultLineHeight,
+		Padding:    NewPaddingY(DefaultPadding),
+		Align:      RIGHT,
+		VAlign:     TOP,
+		Font: &Font{
+			Size: DefaultFontSize,
+		},
+	}
+}
+
 // DefaultLine default line setting
 var DefaultLine = func() Line {
 	return Line{
@@ -39,6 +69,11 @@ var DefaultBorder = func() *Border {
 		Bottom: DefaultLine(),
 		Left:   DefaultLine(),
 	}
+}
+
+// NoBorder no border setting
+var NoBorder = func() *Border {
+	return &Border{}
 }
 
 // Style for drawing
@@ -110,11 +145,14 @@ func (s *Style) Inherit(s1 *Style, cache draw2d.FontCache) error {
 			if s.Font.Size < 1e-15 {
 				s.Font.Size = s1.Font.Size
 			}
-			if s.Font.Data != nil {
+			if s.Font.Data == nil {
 				s.Font.Data = s1.Font.Data
 			}
-			if s.Font.Font != nil {
+			if s.Font.Font == nil {
 				s.Font.Font = s1.Font.Font
+			}
+			if s.Font.DPI <= 0 {
+				s.Font.DPI = s1.Font.DPI
 			}
 		}
 	}
@@ -129,7 +167,7 @@ func (s *Style) LoadFont(cache draw2d.FontCache) error {
 	return s.Font.Load(cache)
 }
 
-// Size outer bound size
+// BorderSize outer bound size
 func (s Style) BorderSize() image.Point {
 	var (
 		x int
@@ -215,6 +253,7 @@ func (s Style) InnerBounds(bounds image.Rectangle) image.Rectangle {
 	}
 }
 
+// BorderPadding border padding
 func (s Style) BorderPadding() Padding {
 	padding := ZeroPadding
 	if s.Margin != nil {
@@ -232,9 +271,9 @@ func (s Style) BorderPadding() Padding {
 // Border border setting
 type Border struct {
 	Top    Line `json:"top,omitempty"`
-	Right  Line `json:"border,omitempty"`
-	Bottom Line `json:"border,omitempty"`
-	Left   Line `json:"border,omitempty"`
+	Right  Line `json:"right,omitempty"`
+	Bottom Line `json:"bottom,omitempty"`
+	Left   Line `json:"left,omitempty"`
 }
 
 // ChangeColor change border color
@@ -263,7 +302,7 @@ func (b Border) Padding() Padding {
 	}
 }
 
-// BorderSize border border size
+// Size border border size
 func (b Border) Size() image.Point {
 	return image.Pt(b.Left.Width+b.Right.Width, b.Top.Width+b.Bottom.Width)
 }
@@ -375,8 +414,11 @@ type Font struct {
 	Data *draw2d.FontData `json:"data,omitempty"`
 	// Font
 	Font *truetype.Font `json:"-"`
+	// DPI
+	DPI int `json:"dpi,omitempty"`
 }
 
+// Load font from font cache
 func (f *Font) Load(cache draw2d.FontCache) error {
 	if f.Font != nil {
 		return nil

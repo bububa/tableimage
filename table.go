@@ -14,6 +14,8 @@ type Cell struct {
 	Image *Image `json:"image,omitempty"`
 	// Style for cell
 	Style *Style `json:"style,omitempty"`
+	// IgnoreInlineStyle ignore inline text style parsing
+	IgnoreInlineStyle bool `json:"ignore_inline_style,omitempty"`
 }
 
 // Draw render cell to image
@@ -39,11 +41,11 @@ func (c Cell) Draw(img *image.RGBA, bounds image.Rectangle) {
 			}
 		}
 		lineHeight := stringHeight(c.Style.Font.Size, c.Style.LineHeight)
-		wrapedTexts, _ := c.Wrap(imgXOffset)
+		lines, _ := c.Wrap(imgXOffset)
 		innerBounds := c.InnerBounds(bounds)
 		var (
 			textStartX int
-			textHeight = len(wrapedTexts) * lineHeight
+			textHeight = len(lines) * lineHeight
 			y          int
 			imgX       int
 			imgY       int
@@ -99,41 +101,46 @@ func (c Cell) Draw(img *image.RGBA, bounds image.Rectangle) {
 			pt := image.Pt(imgX, imgY)
 			drawImage(img, c.Image, pt)
 		}
-		for lineIdx, wrapedText := range wrapedTexts {
-			y += lineIdx * lineHeight
+		for _, line := range lines {
 			var x int
 			switch c.Style.Align {
 			case RIGHT:
 				if textStartX > 0 {
-					x = innerBounds.Max.X - wrapedText.Width
+					x = innerBounds.Max.X - line.Width()
 				} else {
-					x = innerBounds.Max.X - wrapedText.Width - imgXOffset
+					x = innerBounds.Max.X - line.Width() - imgXOffset
 				}
 			case CENTER:
-				center := (innerBounds.Dx() - wrapedText.Width - imgXOffset) / 2
+				center := (innerBounds.Dx() - line.Width() - imgXOffset) / 2
 				x = innerBounds.Min.X + center
 			default:
 				x = innerBounds.Min.X + textStartX
 			}
 			pt := image.Pt(x, y)
-			drawText(img, pt, wrapedText.Value, c.Style.Color, c.Style.Font.Font, c.Style.Font.Size)
+			for _, txt := range line {
+				if txt.Color == "" {
+					txt.Color = c.Style.Color
+				}
+				txtBounds := image.Rect(pt.X, pt.Y, pt.X+txt.Width, pt.Y+lineHeight)
+				drawText(img, txtBounds, &txt, c.Style.Font)
+				pt = pt.Add(image.Pt(txt.Width, 0))
+			}
+			y += lineHeight
 		}
 	}
 }
 
 // Wrap wraps cell content returns paragraphs, and max content width
-func (c Cell) Wrap(xOffset int) ([]Text, int) {
+func (c Cell) Wrap(xOffset int) ([]Word, int) {
 	if c.Style == nil || c.Style.Font == nil {
-		return []Text{{
-			Value: c.Text,
-			Width: 0,
-		}}, 0
+		return nil, 0
 	}
 	maxWidth := c.Style.MaxWidth - xOffset
 	fontFace := newFontFace(c.Style.Font.Font, c.Style.Font.Size)
-	return wrap(c.Text, maxWidth, fontFace)
+	return wrap(c.Text, maxWidth, fontFace, c.IgnoreInlineStyle)
 }
 
+// ImageSize get image size, will update Image.Size based on max width setting
 func (c Cell) ImageSize() image.Point {
 	if c.Style == nil || c.Image == nil || c.Image.Data == nil {
 		return image.ZP
@@ -168,13 +175,13 @@ func (c Cell) Size() image.Point {
 			imgW = imgSize.X
 		}
 	}
-	wrapedTexts, maxWidth := c.Wrap(xOffset)
+	lines, maxWidth := c.Wrap(xOffset)
 	if maxWidth < imgW {
 		maxWidth = imgW
 	}
 	x := maxWidth + c.Style.BorderSize().X
-	height := stringHeight(c.Style.Font.Size, c.Style.LineHeight)
-	textHeight := len(wrapedTexts) * height
+	lineHeight := stringHeight(c.Style.Font.Size, c.Style.LineHeight)
+	textHeight := len(lines) * lineHeight
 	if textHeight < imgH {
 		textHeight = imgH
 	}
@@ -223,15 +230,19 @@ type Row struct {
 	Style *Style `json:"style,omitempty"`
 }
 
-// Rows rows
-type Rows struct {
-	colsWidth  []int
-	rowsHeight []int
-	rows       []Row
+// Table table struct
+type Table struct {
+	colsWidth   []int
+	rowsHeight  []int
+	rows        []Row
+	caption     *Cell
+	footer      *Cell
+	captionSize image.Point
+	footerSize  image.Point
 }
 
-// NewRows create Rows instance
-func NewRows(ti *TableImage, rows []Row) (*Rows, error) {
+// NewTable create Table instance
+func NewTable(ti *TableImage, rows []Row, caption *Cell, footer *Cell) (*Table, error) {
 	var maxCols int
 	for _, row := range rows {
 		cols := len(row.Cells)
@@ -268,15 +279,55 @@ func NewRows(ti *TableImage, rows []Row) (*Rows, error) {
 		row.Cells = rowCells
 		updatedRows = append(updatedRows, row)
 	}
-	return &Rows{
+	table := &Table{
+		caption:    caption,
+		footer:     footer,
 		rows:       updatedRows,
 		rowsHeight: heights,
 		colsWidth:  cols,
-	}, nil
+	}
+	if caption != nil {
+		if caption.Style == nil {
+			caption.Style = DefaultCaptionStyle()
+			caption.Style.LoadFont(ti.fontCache)
+		} else {
+			caption.Style.Inherit(DefaultCaptionStyle(), ti.fontCache)
+		}
+		if caption.Style.MaxWidth == 0 || caption.Style.MaxWidth > table.Size().X {
+			caption.Style.MaxWidth = table.Size().X - caption.Style.BorderPadding().Size().X
+		}
+		table.captionSize = caption.Size()
+	}
+	if footer != nil {
+		if footer.Style == nil {
+			footer.Style = DefaultCaptionStyle()
+			footer.Style.LoadFont(ti.fontCache)
+		} else {
+			footer.Style.Inherit(DefaultCaptionStyle(), ti.fontCache)
+		}
+		if footer.Style.MaxWidth == 0 || footer.Style.MaxWidth > table.Size().X {
+			footer.Style.MaxWidth = table.Size().X - footer.Style.BorderPadding().Size().X
+		}
+		table.footerSize = footer.Size()
+	}
+	return table, nil
 }
 
 // Size get bound size
-func (r Rows) Size() image.Point {
+func (r Table) Size() image.Point {
+	rowsSize := r.RowsSize()
+	if rowsSize.X < r.captionSize.X {
+		rowsSize.X = r.captionSize.X
+	}
+	if rowsSize.X < r.footerSize.X {
+		rowsSize.X = r.footerSize.X
+	}
+	rowsSize.Y += r.captionSize.Y + r.footerSize.Y
+	return rowsSize
+}
+
+// RowsSize get rows size
+func (r Table) RowsSize() image.Point {
 	var (
 		width  int
 		height int
@@ -290,8 +341,31 @@ func (r Rows) Size() image.Point {
 	return image.Pt(width, height)
 }
 
-// CellPoint pos of a cell
-func (r Rows) CellBounds(rowIdx int, cellIdx int) image.Rectangle {
+// RowsStartPoint table rows start point
+func (r Table) RowsStartPoint() image.Point {
+	return r.captionSize
+}
+
+// DrawCaption draw table caption
+func (r Table) DrawCaption(img *image.RGBA, pt image.Point) {
+	if r.caption == nil {
+		return
+	}
+	bounds := image.Rect(pt.X, pt.Y, pt.X+r.captionSize.X, pt.Y+r.captionSize.Y)
+	r.caption.Draw(img, bounds)
+}
+
+// DrawFooter draw table footer
+func (r Table) DrawFooter(img *image.RGBA, pt image.Point) {
+	if r.footer == nil {
+		return
+	}
+	bounds := image.Rect(pt.X, pt.Y, pt.X+r.footerSize.X, pt.Y+r.footerSize.Y)
+	r.footer.Draw(img, bounds)
+}
+
+// CellBounds get a cell bounds
+func (r Table) CellBounds(rowIdx int, cellIdx int) image.Rectangle {
 	var (
 		x int
 		y int
@@ -314,7 +388,7 @@ func (r Rows) CellBounds(rowIdx int, cellIdx int) image.Rectangle {
 }
 
 // Rows get rows
-func (r Rows) Rows() []Row {
+func (r Table) Rows() []Row {
 	return r.rows
 }
 

@@ -5,14 +5,16 @@ const (
 	DefaultLineHeight = 1.2
 	// DefaultFontSize default font size
 	DefaultFontSize = 13
-	// DefaultPadding default seperator padding
+	// DefaultPadding default padding
 	DefaultPadding = 10
 	// DefaultWrapWords default wrap words count
 	DefaultWrapWords = 20
-	// DefalutColor default text color
+	// DefaultColor default text color
 	DefaultColor = "#212121"
 	// DefaultBorderWidth default stroke line width
 	DefaultBorderWidth = 1
+	// DefaultDPI default font dpi
+	DefaultDPI = 72
 )
 
 // ImageType image type for writer

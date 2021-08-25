@@ -4,15 +4,30 @@ import (
 	"image"
 
 	"github.com/golang/freetype"
-	"github.com/golang/freetype/truetype"
 	"github.com/llgcode/draw2d/draw2dimg"
 	"github.com/llgcode/draw2d/draw2dkit"
-	"golang.org/x/image/font"
 )
 
-func drawText(img *image.RGBA, point image.Point, label string, color string, ft *truetype.Font, fontSize float64) {
-	fontCtx := newFreetypeContext()
-	fontCtx.SetFont(ft)
+func drawText(img *image.RGBA, bounds image.Rectangle, txt *Text, font *Font) {
+	if txt.BgColor != "" {
+		drawRect(img, bounds, "", txt.BgColor, 1)
+	}
+	point := bounds.Min.Add(image.Pt(txt.Padding, 0))
+	drawString(img, point, txt.Value, txt.Color, font)
+}
+
+func drawString(img *image.RGBA, point image.Point, label string, color string, font *Font) {
+	if font == nil || font.Font == nil {
+		return
+	}
+	dpi := float64(font.DPI)
+	if font.DPI <= 0 {
+		dpi = float64(DefaultDPI)
+	}
+	fontSize := font.Size * float64(DefaultDPI) / dpi
+	fontCtx := freetype.NewContext()
+	fontCtx.SetDPI(dpi)
+	fontCtx.SetFont(font.Font)
 	fontCtx.SetFontSize(fontSize)
 	fontCtx.SetClip(img.Bounds())
 	fontCtx.SetDst(img)
@@ -52,30 +67,4 @@ func scaleImage(img image.Image, scale float64) *image.RGBA {
 	gc.Scale(scale, scale)
 	gc.DrawImage(img)
 	return i
-}
-
-// MeasureString returns the rendered width and height of the specified text
-// given the current font face.
-func stringWidth(s string, fontFace font.Face) float64 {
-	d := &font.Drawer{
-		Face: fontFace,
-	}
-	a := d.MeasureString(s)
-	return float64(a >> 6)
-}
-
-func stringHeight(fontSize float64, lineHeight float64) int {
-	return int(fontSize * lineHeight)
-}
-
-func newFontFace(ft *truetype.Font, fontSize float64) font.Face {
-	return truetype.NewFace(ft, &truetype.Options{
-		Size: fontSize,
-	})
-}
-
-func newFreetypeContext() *freetype.Context {
-	fontCtx := freetype.NewContext()
-	fontCtx.SetDPI(72)
-	return fontCtx
 }
