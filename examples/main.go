@@ -121,7 +121,8 @@ func main() {
 						MaxWidth: 100,
 						BgColor:  "#D32F2F",
 					},
-					Text: "A more cooler product this time on 3 lines",
+					IgnoreInlineStyle: false,
+					Text:              "A more <text bgcolor='#8BC34A' color='#000' padding='4'>cooler product this</text> time on 3 lines",
 				},
 				{
 					Style: &tableimage.Style{

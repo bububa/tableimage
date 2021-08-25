@@ -14,6 +14,8 @@ type Cell struct {
 	Image *Image `json:"image,omitempty"`
 	// Style for cell
 	Style *Style `json:"style,omitempty"`
+	// IgnoreInlineStyle ignore inline text style parsing
+	IgnoreInlineStyle bool `json:"ignore_inline_style,omitempty"`
 }
 
 // Draw render cell to image
@@ -39,11 +41,11 @@ func (c Cell) Draw(img *image.RGBA, bounds image.Rectangle) {
 			}
 		}
 		lineHeight := stringHeight(c.Style.Font.Size, c.Style.LineHeight)
-		wrapedTexts, _ := c.Wrap(imgXOffset)
+		lines, _ := c.Wrap(imgXOffset)
 		innerBounds := c.InnerBounds(bounds)
 		var (
 			textStartX int
-			textHeight = len(wrapedTexts) * lineHeight
+			textHeight = len(lines) * lineHeight
 			y          int
 			imgX       int
 			imgY       int
@@ -99,39 +101,43 @@ func (c Cell) Draw(img *image.RGBA, bounds image.Rectangle) {
 			pt := image.Pt(imgX, imgY)
 			drawImage(img, c.Image, pt)
 		}
-		for lineIdx, wrapedText := range wrapedTexts {
-			y += lineIdx * lineHeight
+		for _, line := range lines {
 			var x int
 			switch c.Style.Align {
 			case RIGHT:
 				if textStartX > 0 {
-					x = innerBounds.Max.X - wrapedText.Width
+					x = innerBounds.Max.X - line.Width()
 				} else {
-					x = innerBounds.Max.X - wrapedText.Width - imgXOffset
+					x = innerBounds.Max.X - line.Width() - imgXOffset
 				}
 			case CENTER:
-				center := (innerBounds.Dx() - wrapedText.Width - imgXOffset) / 2
+				center := (innerBounds.Dx() - line.Width() - imgXOffset) / 2
 				x = innerBounds.Min.X + center
 			default:
 				x = innerBounds.Min.X + textStartX
 			}
 			pt := image.Pt(x, y)
-			drawText(img, pt, wrapedText.Value, c.Style.Color, c.Style.Font)
+			for _, txt := range line {
+				if txt.Color == "" {
+					txt.Color = c.Style.Color
+				}
+				txtBounds := image.Rect(pt.X, pt.Y, pt.X+txt.Width, pt.Y+lineHeight)
+				drawText(img, txtBounds, &txt, c.Style.Font)
+				pt = pt.Add(image.Pt(txt.Width, 0))
+			}
+			y += lineHeight
 		}
 	}
 }
 
 // Wrap wraps cell content returns paragraphs, and max content width
-func (c Cell) Wrap(xOffset int) ([]Text, int) {
+func (c Cell) Wrap(xOffset int) ([]Word, int) {
 	if c.Style == nil || c.Style.Font == nil {
-		return []Text{{
-			Value: c.Text,
-			Width: 0,
-		}}, 0
+		return nil, 0
 	}
 	maxWidth := c.Style.MaxWidth - xOffset
 	fontFace := newFontFace(c.Style.Font.Font, c.Style.Font.Size)
-	return wrap(c.Text, maxWidth, fontFace)
+	return wrap(c.Text, maxWidth, fontFace, c.IgnoreInlineStyle)
 }
 
 // ImageSize get image size, will update Image.Size based on max width setting
@@ -169,13 +175,13 @@ func (c Cell) Size() image.Point {
 			imgW = imgSize.X
 		}
 	}
-	wrapedTexts, maxWidth := c.Wrap(xOffset)
+	lines, maxWidth := c.Wrap(xOffset)
 	if maxWidth < imgW {
 		maxWidth = imgW
 	}
 	x := maxWidth + c.Style.BorderSize().X
 	lineHeight := stringHeight(c.Style.Font.Size, c.Style.LineHeight)
-	textHeight := len(wrapedTexts) * lineHeight
+	textHeight := len(lines) * lineHeight
 	if textHeight < imgH {
 		textHeight = imgH
 	}

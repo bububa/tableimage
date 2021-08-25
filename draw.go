@@ -8,7 +8,15 @@ import (
 	"github.com/llgcode/draw2d/draw2dkit"
 )
 
-func drawText(img *image.RGBA, point image.Point, label string, color string, font *Font) {
+func drawText(img *image.RGBA, bounds image.Rectangle, txt *Text, font *Font) {
+	if txt.BgColor != "" {
+		drawRect(img, bounds, "", txt.BgColor, 1)
+	}
+	point := bounds.Min.Add(image.Pt(txt.Padding, 0))
+	drawString(img, point, txt.Value, txt.Color, font)
+}
+
+func drawString(img *image.RGBA, point image.Point, label string, color string, font *Font) {
 	if font == nil || font.Font == nil {
 		return
 	}

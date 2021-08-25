@@ -16,6 +16,7 @@ Generates a table inside of a image based on the provided data
 - style inherit, could set style in cell, row, table level
 - support image in table
 - support text dpi setting, font size setting based on 72dpi
+- support inline text style (inline text format <text color="#0f0" bgcolor="#FFF" padding="2">styled text</text>.)
 
 ### Example:
 
@@ -38,21 +39,11 @@ import (
 func main() {
 	imageURL := "https://images.pexels.com/photos/906052/pexels-photo-906052.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=200"
 
-	headerFont := &tableimage.Font{
-		Size: 13,
-		Data: &draw2d.FontData{
-			Name:   "Roboto",
-			Family: draw2d.FontFamilySans,
-			Style:  draw2d.FontStyleBold,
-		},
-	}
-	headerStyle := &tableimage.Style{
-		Font: headerFont,
-	}
 	ti, err := tableimage.New(
 		tableimage.WithBgColor("#FFFFFF"),
 		tableimage.WithBorderColor("#0277BD"),
 		tableimage.WithFontSize(11),
+		tableimage.WithDPI(144),
 		tableimage.WithFontData(&draw2d.FontData{
 			Name:   "NotoSansCJKsc",
 			Family: draw2d.FontFamilySans,
@@ -64,6 +55,45 @@ func main() {
 		log.Fatalln(err)
 		return
 	}
+
+	headerFont := &tableimage.Font{
+		Size: 13,
+		Data: &draw2d.FontData{
+			Name:   "Roboto",
+			Family: draw2d.FontFamilySans,
+			Style:  draw2d.FontStyleBold,
+		},
+	}
+
+	footerFont := &tableimage.Font{
+		Size: 10,
+		Data: &draw2d.FontData{
+			Name:   "NotoSansCJKsc",
+			Family: draw2d.FontFamilySans,
+			Style:  draw2d.FontStyleNormal,
+		},
+	}
+
+	headerStyle := &tableimage.Style{
+		Font: headerFont,
+	}
+
+	caption := &tableimage.Cell{
+		Text: "this is a caption very long long long ago adsfasdfwe;alsdkfasdfasf asdfajsdf",
+		Style: &tableimage.Style{
+			Color: "#3F51B5",
+			Font:  headerFont,
+		},
+	}
+
+	tfooter := &tableimage.Cell{
+		Text: "this is a tabel footer very long long long ago adsfasdfwe;alsdkfasdfasf asdfajsdf",
+		Style: &tableimage.Style{
+			Color: "#D7CCC8",
+			Font:  footerFont,
+		},
+	}
+
 	rows := []tableimage.Row{
 		{
 			Style: headerStyle,
@@ -118,7 +148,8 @@ func main() {
 						MaxWidth: 100,
 						BgColor:  "#D32F2F",
 					},
-					Text: "A more cooler product this time on 3 lines",
+                    IgnoreInlineStyle: false,
+					Text: "A more <text bgcolor='#8BC34A' color='#000' padding='4'>cooler product this</text> time on 3 lines",
 				},
 				{
 					Style: &tableimage.Style{
@@ -204,7 +235,7 @@ func main() {
 			},
 		},
 	}
-	img, err := ti.Draw(rows)
+	img, err := ti.Draw(rows, caption, tfooter)
 	if err != nil {
 		log.Fatalln(err)
 		return
