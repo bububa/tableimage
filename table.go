@@ -116,7 +116,7 @@ func (c Cell) Draw(img *image.RGBA, bounds image.Rectangle) {
 				x = innerBounds.Min.X + textStartX
 			}
 			pt := image.Pt(x, y)
-			drawText(img, pt, wrapedText.Value, c.Style.Color, c.Style.Font.Font, c.Style.Font.Size)
+			drawText(img, pt, wrapedText.Value, c.Style.Color, c.Style.Font)
 		}
 	}
 }
@@ -134,6 +134,7 @@ func (c Cell) Wrap(xOffset int) ([]Text, int) {
 	return wrap(c.Text, maxWidth, fontFace)
 }
 
+// ImageSize get image size, will update Image.Size based on max width setting
 func (c Cell) ImageSize() image.Point {
 	if c.Style == nil || c.Image == nil || c.Image.Data == nil {
 		return image.ZP
@@ -357,7 +358,7 @@ func (r Table) DrawFooter(img *image.RGBA, pt image.Point) {
 	r.footer.Draw(img, bounds)
 }
 
-// CellPoint pos of a cell
+// CellBounds get a cell bounds
 func (r Table) CellBounds(rowIdx int, cellIdx int) image.Rectangle {
 	var (
 		x int

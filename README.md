@@ -15,6 +15,7 @@ Generates a table inside of a image based on the provided data
 - support border, font, color, padding, margin etc. style settings
 - style inherit, could set style in cell, row, table level
 - support image in table
+- support text dpi setting, font size setting based on 72dpi
 
 ### Example:
 

@@ -151,6 +151,9 @@ func (s *Style) Inherit(s1 *Style, cache draw2d.FontCache) error {
 			if s.Font.Font == nil {
 				s.Font.Font = s1.Font.Font
 			}
+			if s.Font.DPI <= 0 {
+				s.Font.DPI = s1.Font.DPI
+			}
 		}
 	}
 	return nil
@@ -164,7 +167,7 @@ func (s *Style) LoadFont(cache draw2d.FontCache) error {
 	return s.Font.Load(cache)
 }
 
-// Size outer bound size
+// BorderSize outer bound size
 func (s Style) BorderSize() image.Point {
 	var (
 		x int
@@ -299,7 +302,7 @@ func (b Border) Padding() Padding {
 	}
 }
 
-// BorderSize border border size
+// Size border border size
 func (b Border) Size() image.Point {
 	return image.Pt(b.Left.Width+b.Right.Width, b.Top.Width+b.Bottom.Width)
 }
@@ -411,8 +414,11 @@ type Font struct {
 	Data *draw2d.FontData `json:"data,omitempty"`
 	// Font
 	Font *truetype.Font `json:"-"`
+	// DPI
+	DPI int `json:"dpi,omitempty"`
 }
 
+// Load font from font cache
 func (f *Font) Load(cache draw2d.FontCache) error {
 	if f.Font != nil {
 		return nil

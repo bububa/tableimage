@@ -12,6 +12,7 @@ import (
 	"github.com/llgcode/draw2d"
 )
 
+// TableImage core struct
 type TableImage struct {
 	fontFolder string
 	fontCache  draw2d.FontCache
@@ -19,6 +20,7 @@ type TableImage struct {
 	style      *Style
 }
 
+// New init a TableImage object
 func New(options ...Option) (*TableImage, error) {
 	ti := &TableImage{
 		style:      DefaultStyle(),
@@ -64,6 +66,7 @@ func Write(w io.Writer, img *image.RGBA, imageType ImageType) error {
 	return errors.New("unknown image type")
 }
 
+// Save an image to file
 func Save(filepath string, img *image.RGBA, imageType ImageType) error {
 	f, err := os.Create(filepath)
 	if err != nil {
@@ -82,7 +85,7 @@ func (ti *TableImage) Size(table *Table) image.Point {
 	return rowsBounds.Add(ti.style.BorderSize())
 }
 
-// Border get border width of tableimage
+// BorderSize get border width of tableimage
 func (ti *TableImage) BorderSize() image.Point {
 	border := image.ZP
 	if ti.style != nil {

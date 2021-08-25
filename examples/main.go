@@ -12,29 +12,11 @@ import (
 func main() {
 	imageURL := "https://images.pexels.com/photos/906052/pexels-photo-906052.jpeg?auto=compress&cs=tinysrgb&dpr=2&h=750&w=200"
 
-	headerFont := &tableimage.Font{
-		Size: 13,
-		Data: &draw2d.FontData{
-			Name:   "Roboto",
-			Family: draw2d.FontFamilySans,
-			Style:  draw2d.FontStyleBold,
-		},
-	}
-	footerFont := &tableimage.Font{
-		Size: 10,
-		Data: &draw2d.FontData{
-			Name:   "NotoSansCJKsc",
-			Family: draw2d.FontFamilySans,
-			Style:  draw2d.FontStyleNormal,
-		},
-	}
-	headerStyle := &tableimage.Style{
-		Font: headerFont,
-	}
 	ti, err := tableimage.New(
 		tableimage.WithBgColor("#FFFFFF"),
 		tableimage.WithBorderColor("#0277BD"),
 		tableimage.WithFontSize(11),
+		tableimage.WithDPI(144),
 		tableimage.WithFontData(&draw2d.FontData{
 			Name:   "NotoSansCJKsc",
 			Family: draw2d.FontFamilySans,
@@ -45,6 +27,28 @@ func main() {
 	if err != nil {
 		log.Fatalln(err)
 		return
+	}
+
+	headerFont := &tableimage.Font{
+		Size: 13,
+		Data: &draw2d.FontData{
+			Name:   "Roboto",
+			Family: draw2d.FontFamilySans,
+			Style:  draw2d.FontStyleBold,
+		},
+	}
+
+	footerFont := &tableimage.Font{
+		Size: 10,
+		Data: &draw2d.FontData{
+			Name:   "NotoSansCJKsc",
+			Family: draw2d.FontFamilySans,
+			Style:  draw2d.FontStyleNormal,
+		},
+	}
+
+	headerStyle := &tableimage.Style{
+		Font: headerFont,
 	}
 
 	caption := &tableimage.Cell{

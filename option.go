@@ -82,7 +82,7 @@ func WithBorderColor(color string) Option {
 	})
 }
 
-// WithBorderWith set border width
+// WithBorderWidth set border width
 func WithBorderWidth(width int) Option {
 	return optionFunc(func(ti *TableImage) {
 		if ti.style == nil {
@@ -165,6 +165,19 @@ func WithFont(font *truetype.Font) Option {
 			ti.style.Font = &Font{}
 		}
 		ti.style.Font.Font = font
+	})
+}
+
+// WidthDPI set font dpi
+func WithDPI(dpi int) Option {
+	return optionFunc(func(ti *TableImage) {
+		if ti.style == nil {
+			ti.style = &Style{}
+		}
+		if ti.style.Font == nil {
+			ti.style.Font = &Font{}
+		}
+		ti.style.Font.DPI = dpi
 	})
 }
 
