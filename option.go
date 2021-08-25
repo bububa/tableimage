@@ -168,7 +168,7 @@ func WithFont(font *truetype.Font) Option {
 	})
 }
 
-// WidthDPI set font dpi
+// WithDPI set font dpi
 func WithDPI(dpi int) Option {
 	return optionFunc(func(ti *TableImage) {
 		if ti.style == nil {

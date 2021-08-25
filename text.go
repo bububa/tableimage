@@ -162,30 +162,7 @@ func extractTexts(s string, ignoreInlineStyle bool) []Text {
 				Value: s[lastTxt.Pos[1]:locs[0]],
 			})
 		}
-		text := Text{
-			Pos: [2]int{locs[0], locs[1]},
-		}
-		for j, name := range groupNames {
-			if j == 0 || name == "" {
-				continue
-			}
-			content := s[locs[j*2]:locs[j*2+1]]
-			if name == "attrs" {
-				attrs := extractAttrs(content)
-				for k, v := range attrs {
-					switch k {
-					case "color":
-						text.Color = v
-					case "bgcolor":
-						text.BgColor = v
-					case "padding":
-						text.Padding, _ = strconv.Atoi(v)
-					}
-				}
-			} else if name == "txt" {
-				text.Value = content
-			}
-		}
+		text := extractText(s, groupNames, locs)
 		segments = append(segments, text)
 		if idx == totalMatches-1 && locs[1] < txtL {
 			segments = append(segments, Text{
@@ -195,6 +172,34 @@ func extractTexts(s string, ignoreInlineStyle bool) []Text {
 		}
 	}
 	return segments
+}
+
+func extractText(s string, groupNames []string, locs []int) Text {
+	text := Text{
+		Pos: [2]int{locs[0], locs[1]},
+	}
+	for j, name := range groupNames {
+		if j == 0 || name == "" {
+			continue
+		}
+		content := s[locs[j*2]:locs[j*2+1]]
+		if name == "attrs" {
+			attrs := extractAttrs(content)
+			for k, v := range attrs {
+				switch k {
+				case "color":
+					text.Color = v
+				case "bgcolor":
+					text.BgColor = v
+				case "padding":
+					text.Padding, _ = strconv.Atoi(v)
+				}
+			}
+		} else if name == "txt" {
+			text.Value = content
+		}
+	}
+	return text
 }
 
 // extractAttrs extract text tag attributes
