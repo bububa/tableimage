@@ -39,17 +39,17 @@ func New(options ...Option) (*TableImage, error) {
 }
 
 // Draw draw table image
-func (ti *TableImage) Draw(rows []Row) (*image.RGBA, error) {
-	rowsObj, err := NewRows(ti, rows)
+func (ti *TableImage) Draw(rows []Row, caption *Cell, footer *Cell) (*image.RGBA, error) {
+	table, err := NewTable(ti, rows, caption, footer)
 	if err != nil {
 		return nil, err
 	}
-	bounds := ti.Size(rowsObj)
+	bounds := ti.Size(table)
 	img := image.NewRGBA(image.Rect(0, 0, bounds.X, bounds.Y))
 	if ti.style != nil && ti.style.BgColor != "" {
 		draw.Draw(img, img.Bounds(), &image.Uniform{ColorFromHex(ti.style.BgColor)}, image.ZP, draw.Src)
 	}
-	ti.draw(img, rowsObj)
+	ti.draw(img, table)
 	return img, nil
 }
 
@@ -74,8 +74,8 @@ func Save(filepath string, img *image.RGBA, imageType ImageType) error {
 }
 
 // Size get tableimage width/height
-func (ti *TableImage) Size(rows *Rows) image.Point {
-	rowsBounds := rows.Size()
+func (ti *TableImage) Size(table *Table) image.Point {
+	rowsBounds := table.Size()
 	if ti.style == nil {
 		return rowsBounds
 	}
@@ -91,23 +91,28 @@ func (ti *TableImage) BorderSize() image.Point {
 	return border
 }
 
-// RowsPoint rows start point
-func (ti *TableImage) RowsStartPoint() image.Point {
+func (ti *TableImage) innerStartPoint() image.Point {
 	if ti.style == nil {
 		return image.ZP
 	}
 	return ti.style.InnerStart()
 }
 
-func (ti *TableImage) draw(img *image.RGBA, rows *Rows) {
-	rowsPt := ti.RowsStartPoint()
-	for rowIdx, row := range rows.Rows() {
+func (ti *TableImage) draw(img *image.RGBA, table *Table) {
+	startPoint := ti.innerStartPoint()
+	table.DrawCaption(img, startPoint)
+	rowsStartPoint := table.RowsStartPoint()
+	rowsPt := image.Pt(startPoint.X, startPoint.Y+rowsStartPoint.Y)
+	for rowIdx, row := range table.Rows() {
 		for cellIdx, cell := range row.Cells {
-			bounds := rows.CellBounds(rowIdx, cellIdx)
+			bounds := table.CellBounds(rowIdx, cellIdx)
 			bounds = bounds.Add(rowsPt)
 			cell.Draw(img, bounds)
 		}
 	}
+	rowsSize := table.RowsSize()
+	footerPt := image.Pt(startPoint.X, rowsPt.Y+rowsSize.Y)
+	table.DrawFooter(img, footerPt)
 }
 
 // CacheImage cache image

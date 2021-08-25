@@ -11,6 +11,9 @@ import (
 )
 
 func drawText(img *image.RGBA, point image.Point, label string, color string, ft *truetype.Font, fontSize float64) {
+	if ft == nil {
+		return
+	}
 	fontCtx := newFreetypeContext()
 	fontCtx.SetFont(ft)
 	fontCtx.SetFontSize(fontSize)
@@ -57,6 +60,9 @@ func scaleImage(img image.Image, scale float64) *image.RGBA {
 // MeasureString returns the rendered width and height of the specified text
 // given the current font face.
 func stringWidth(s string, fontFace font.Face) float64 {
+	if fontFace == nil {
+		return 0
+	}
 	d := &font.Drawer{
 		Face: fontFace,
 	}
@@ -69,6 +75,9 @@ func stringHeight(fontSize float64, lineHeight float64) int {
 }
 
 func newFontFace(ft *truetype.Font, fontSize float64) font.Face {
+	if ft == nil {
+		return nil
+	}
 	return truetype.NewFace(ft, &truetype.Options{
 		Size: fontSize,
 	})

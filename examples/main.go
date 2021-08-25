@@ -20,6 +20,14 @@ func main() {
 			Style:  draw2d.FontStyleBold,
 		},
 	}
+	footerFont := &tableimage.Font{
+		Size: 10,
+		Data: &draw2d.FontData{
+			Name:   "NotoSansCJKsc",
+			Family: draw2d.FontFamilySans,
+			Style:  draw2d.FontStyleNormal,
+		},
+	}
 	headerStyle := &tableimage.Style{
 		Font: headerFont,
 	}
@@ -38,6 +46,23 @@ func main() {
 		log.Fatalln(err)
 		return
 	}
+
+	caption := &tableimage.Cell{
+		Text: "this is a caption very long long long ago adsfasdfwe;alsdkfasdfasf asdfajsdf",
+		Style: &tableimage.Style{
+			Color: "#3F51B5",
+			Font:  headerFont,
+		},
+	}
+
+	tfooter := &tableimage.Cell{
+		Text: "this is a tabel footer very long long long ago adsfasdfwe;alsdkfasdfasf asdfajsdf",
+		Style: &tableimage.Style{
+			Color: "#D7CCC8",
+			Font:  footerFont,
+		},
+	}
+
 	rows := []tableimage.Row{
 		{
 			Style: headerStyle,
@@ -178,7 +203,7 @@ func main() {
 			},
 		},
 	}
-	img, err := ti.Draw(rows)
+	img, err := ti.Draw(rows, caption, tfooter)
 	if err != nil {
 		log.Fatalln(err)
 		return

@@ -16,6 +16,10 @@ Generates a table inside of a image based on the provided data
 - style inherit, could set style in cell, row, table level
 - support image in table
 
+### Example:
+
+![Example](examples/test.png "Example")
+
 ### Usage
 
 ```go
@@ -213,7 +217,3 @@ func main() {
 	tableimage.Write(f, img, tableimage.PNG)
 }
 ```
-
-### Outputs:
-
-![Example](examples/test.png "Example")

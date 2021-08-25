@@ -23,6 +23,36 @@ var DefaultStyle = func() *Style {
 	}
 }
 
+// DefaultCaptionStyle default caption style setting
+var DefaultCaptionStyle = func() *Style {
+	return &Style{
+		Color:      DefaultColor,
+		Border:     NoBorder(),
+		LineHeight: DefaultLineHeight,
+		Padding:    NewPaddingY(DefaultPadding),
+		Align:      LEFT,
+		VAlign:     TOP,
+		Font: &Font{
+			Size: DefaultFontSize,
+		},
+	}
+}
+
+// DefaultFooterStyle default table footer style setting
+var DefaultFooterStyle = func() *Style {
+	return &Style{
+		Color:      DefaultColor,
+		Border:     NoBorder(),
+		LineHeight: DefaultLineHeight,
+		Padding:    NewPaddingY(DefaultPadding),
+		Align:      RIGHT,
+		VAlign:     TOP,
+		Font: &Font{
+			Size: DefaultFontSize,
+		},
+	}
+}
+
 // DefaultLine default line setting
 var DefaultLine = func() Line {
 	return Line{
@@ -39,6 +69,11 @@ var DefaultBorder = func() *Border {
 		Bottom: DefaultLine(),
 		Left:   DefaultLine(),
 	}
+}
+
+// NoBorder no border setting
+var NoBorder = func() *Border {
+	return &Border{}
 }
 
 // Style for drawing
@@ -110,10 +145,10 @@ func (s *Style) Inherit(s1 *Style, cache draw2d.FontCache) error {
 			if s.Font.Size < 1e-15 {
 				s.Font.Size = s1.Font.Size
 			}
-			if s.Font.Data != nil {
+			if s.Font.Data == nil {
 				s.Font.Data = s1.Font.Data
 			}
-			if s.Font.Font != nil {
+			if s.Font.Font == nil {
 				s.Font.Font = s1.Font.Font
 			}
 		}
@@ -215,6 +250,7 @@ func (s Style) InnerBounds(bounds image.Rectangle) image.Rectangle {
 	}
 }
 
+// BorderPadding border padding
 func (s Style) BorderPadding() Padding {
 	padding := ZeroPadding
 	if s.Margin != nil {
@@ -232,9 +268,9 @@ func (s Style) BorderPadding() Padding {
 // Border border setting
 type Border struct {
 	Top    Line `json:"top,omitempty"`
-	Right  Line `json:"border,omitempty"`
-	Bottom Line `json:"border,omitempty"`
-	Left   Line `json:"border,omitempty"`
+	Right  Line `json:"right,omitempty"`
+	Bottom Line `json:"bottom,omitempty"`
+	Left   Line `json:"left,omitempty"`
 }
 
 // ChangeColor change border color
