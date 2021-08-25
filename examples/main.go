@@ -60,7 +60,7 @@ func main() {
 	}
 
 	tfooter := &tableimage.Cell{
-		Text: "this is a tabel footer very long long long ago adsfasdfwe;alsdkfasdfasf asdfajsdf",
+		Text: "this is a tabel footer",
 		Style: &tableimage.Style{
 			Color: "#D7CCC8",
 			Font:  footerFont,

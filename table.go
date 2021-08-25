@@ -300,10 +300,10 @@ func NewTable(ti *TableImage, rows []Row, caption *Cell, footer *Cell) (*Table, 
 	}
 	if footer != nil {
 		if footer.Style == nil {
-			footer.Style = DefaultCaptionStyle()
+			footer.Style = DefaultFooterStyle()
 			footer.Style.LoadFont(ti.fontCache)
 		} else {
-			footer.Style.Inherit(DefaultCaptionStyle(), ti.fontCache)
+			footer.Style.Inherit(DefaultFooterStyle(), ti.fontCache)
 		}
 		if footer.Style.MaxWidth == 0 || footer.Style.MaxWidth > table.Size().X {
 			footer.Style.MaxWidth = table.Size().X - footer.Style.BorderPadding().Size().X
@@ -351,7 +351,7 @@ func (r Table) DrawCaption(img *image.RGBA, pt image.Point) {
 	if r.caption == nil {
 		return
 	}
-	bounds := image.Rect(pt.X, pt.Y, pt.X+r.captionSize.X, pt.Y+r.captionSize.Y)
+	bounds := image.Rect(pt.X, pt.Y, pt.X+r.Size().X, pt.Y+r.captionSize.Y)
 	r.caption.Draw(img, bounds)
 }
 
@@ -360,7 +360,7 @@ func (r Table) DrawFooter(img *image.RGBA, pt image.Point) {
 	if r.footer == nil {
 		return
 	}
-	bounds := image.Rect(pt.X, pt.Y, pt.X+r.footerSize.X, pt.Y+r.footerSize.Y)
+	bounds := image.Rect(pt.X, pt.Y, pt.X+r.Size().X, pt.Y+r.footerSize.Y)
 	r.footer.Draw(img, bounds)
 }
 
