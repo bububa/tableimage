@@ -95,7 +95,7 @@ func wrapWords(words []Word, w int, fontFace font.Face) []Word {
 	return retWords
 }
 
-// separateWords seperate a string into words and not break word
+// separateWords separate a string into words and not break word
 func separateWords(segments []Text, fontFace font.Face) []Word {
 	var (
 		words     []Word
