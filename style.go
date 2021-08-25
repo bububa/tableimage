@@ -132,6 +132,10 @@ func (s *Style) Inherit(s1 *Style, cache draw2d.FontCache) error {
 	if s.VAlign == UnknownVAlign {
 		s.VAlign = s1.VAlign
 	}
+	return s.inheritFont(s1, cache)
+}
+
+func (s *Style) inheritFont(s1 *Style, cache draw2d.FontCache) error {
 	if s.Font == nil {
 		s.Font = s1.Font
 		if err := s.LoadFont(cache); err != nil {

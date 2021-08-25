@@ -2,233 +2,9 @@ package tableimage
 
 import (
 	"image"
-	"math"
-	"net/http"
+
+	"github.com/llgcode/draw2d"
 )
-
-// Cell in table
-type Cell struct {
-	// Text content of a cell
-	Text string `json:"text,omitempty"`
-	// Image image for a cell
-	Image *Image `json:"image,omitempty"`
-	// Style for cell
-	Style *Style `json:"style,omitempty"`
-	// IgnoreInlineStyle ignore inline text style parsing
-	IgnoreInlineStyle bool `json:"ignore_inline_style,omitempty"`
-}
-
-// Draw render cell to image
-func (c Cell) Draw(img *image.RGBA, bounds image.Rectangle) {
-	if c.Style == nil {
-		return
-	}
-	if c.Style.BgColor != "" {
-		drawRect(img, bounds, "", c.Style.BgColor, 0)
-	}
-	if c.Style.Border != nil {
-		c.Style.Border.Draw(img, bounds)
-	}
-	if c.Style.Font != nil {
-		var (
-			imgSize    image.Point
-			imgXOffset int
-		)
-		if c.Image != nil && c.Image.Data != nil {
-			imgSize = c.ImageSize()
-			if c.Image.Align == LEFT || c.Image.Align == RIGHT {
-				imgXOffset = imgSize.X
-			}
-		}
-		lineHeight := stringHeight(c.Style.Font.Size, c.Style.LineHeight)
-		lines, _ := c.Wrap(imgXOffset)
-		innerBounds := c.InnerBounds(bounds)
-		var (
-			textStartX int
-			textHeight = len(lines) * lineHeight
-			y          int
-			imgX       int
-			imgY       int
-		)
-		switch c.Style.VAlign {
-		case MIDDLE:
-			middle := (innerBounds.Dy() - textHeight - imgSize.Y) / 2
-			y = innerBounds.Min.Y + middle
-		case BOTTOM:
-			y = innerBounds.Max.Y - textHeight - imgSize.Y
-		default:
-			y = innerBounds.Min.Y
-		}
-		if c.Image != nil && c.Image.Data != nil {
-			imgX = c.Image.PaddingLeft()
-			imgY = c.Image.PaddingTop()
-			if c.Image.VAlign == TOP || c.Image.VAlign == BOTTOM {
-				if c.Image.VAlign == TOP {
-					imgY += y
-					y += imgSize.Y
-				} else {
-					imgY += y + textHeight
-				}
-				switch c.Style.Align {
-				case RIGHT:
-					imgX += innerBounds.Max.X - imgSize.X
-				case CENTER:
-					center := (innerBounds.Dx() - imgSize.X) / 2
-					imgX += innerBounds.Min.X + center
-				default:
-					imgX += innerBounds.Min.X
-				}
-			} else if c.Image.Align == LEFT || c.Image.Align == RIGHT {
-				if c.Image.Align == LEFT {
-					imgX += innerBounds.Min.X
-					textStartX = imgSize.X
-				} else {
-					imgX += innerBounds.Max.X - imgSize.X
-				}
-				switch c.Style.VAlign {
-				case BOTTOM:
-					imgY = innerBounds.Max.Y - imgSize.Y
-					y = innerBounds.Max.Y - textHeight
-				case MIDDLE:
-					middle := (innerBounds.Dy() - imgSize.Y) / 2
-					imgY += innerBounds.Min.Y + middle
-					middle = (innerBounds.Dy() - textHeight) / 2
-					y = innerBounds.Min.Y + middle
-				default:
-					imgY += innerBounds.Min.Y
-				}
-			}
-			pt := image.Pt(imgX, imgY)
-			drawImage(img, c.Image, pt)
-		}
-		for _, line := range lines {
-			var x int
-			switch c.Style.Align {
-			case RIGHT:
-				if textStartX > 0 {
-					x = innerBounds.Max.X - line.Width()
-				} else {
-					x = innerBounds.Max.X - line.Width() - imgXOffset
-				}
-			case CENTER:
-				center := (innerBounds.Dx() - line.Width() - imgXOffset) / 2
-				x = innerBounds.Min.X + center
-			default:
-				x = innerBounds.Min.X + textStartX
-			}
-			pt := image.Pt(x, y)
-			for _, txt := range line {
-				if txt.Color == "" {
-					txt.Color = c.Style.Color
-				}
-				txtBounds := image.Rect(pt.X, pt.Y, pt.X+txt.Width, pt.Y+lineHeight)
-				drawText(img, txtBounds, &txt, c.Style.Font)
-				pt = pt.Add(image.Pt(txt.Width, 0))
-			}
-			y += lineHeight
-		}
-	}
-}
-
-// Wrap wraps cell content returns paragraphs, and max content width
-func (c Cell) Wrap(xOffset int) ([]Word, int) {
-	if c.Style == nil || c.Style.Font == nil {
-		return nil, 0
-	}
-	maxWidth := c.Style.MaxWidth - xOffset
-	fontFace := newFontFace(c.Style.Font.Font, c.Style.Font.Size)
-	return wrap(c.Text, maxWidth, fontFace, c.IgnoreInlineStyle)
-}
-
-// ImageSize get image size, will update Image.Size based on max width setting
-func (c Cell) ImageSize() image.Point {
-	if c.Style == nil || c.Image == nil || c.Image.Data == nil {
-		return image.ZP
-	}
-	if c.Style.MaxWidth > 0 && c.Style.MaxWidth < c.Image.BoundSize().X {
-		maxWidth := float64(c.Style.MaxWidth - c.Image.PaddingX())
-		scale := maxWidth / float64(c.Image.Size.X)
-		c.Image.Size.X = int(math.Round(float64(c.Image.Size.X) * scale))
-		c.Image.Size.Y = int(math.Round(float64(c.Image.Size.Y) * scale))
-	}
-	return c.Image.BoundSize()
-}
-
-// Size returns cell width/height
-func (c Cell) Size() image.Point {
-	var (
-		xOffset int
-		yOffset int
-		imgW    int
-		imgH    int
-	)
-	if c.Style == nil || c.Style.Font == nil {
-		return image.ZP
-	}
-	if c.Image != nil && c.Image.Data != nil {
-		imgSize := c.ImageSize()
-		if c.Image.Align == LEFT || c.Image.Align == RIGHT {
-			xOffset = imgSize.X
-			imgH = imgSize.Y
-		} else if c.Image.VAlign == TOP || c.Image.VAlign == BOTTOM {
-			yOffset = imgSize.Y
-			imgW = imgSize.X
-		}
-	}
-	lines, maxWidth := c.Wrap(xOffset)
-	if maxWidth < imgW {
-		maxWidth = imgW
-	}
-	x := maxWidth + c.Style.BorderSize().X
-	lineHeight := stringHeight(c.Style.Font.Size, c.Style.LineHeight)
-	textHeight := len(lines) * lineHeight
-	if textHeight < imgH {
-		textHeight = imgH
-	}
-	y := textHeight + c.Style.BorderSize().Y
-	x += xOffset
-	y += yOffset
-	return image.Pt(x, y)
-}
-
-// InnerBounds cell content bounds
-func (c Cell) InnerBounds(bounds image.Rectangle) image.Rectangle {
-	if c.Style == nil {
-		return image.Rectangle{}
-	}
-	return c.Style.InnerBounds(bounds)
-}
-
-// GetImage download cell image
-func (c Cell) GetImage(cache ImageCache) error {
-	if c.Image == nil || (c.Image.Data != nil && c.Image.URL == "") {
-		return nil
-	}
-	if cache != nil {
-		if img, err := cache.Get(c.Image.URL); err == nil {
-			c.Image.Data = img
-			c.Image.UpdateSize()
-			return nil
-		}
-	}
-	if err := c.Image.Download(); err != nil {
-		return err
-	}
-	if cache != nil {
-		if err := cache.Set(c.Image.URL, c.Image.Data); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-// Row in table
-type Row struct {
-	// Cells in row
-	Cells []Cell `json:"cells,omitempty"`
-	// Style for row
-	Style *Style `json:"style,omitempty"`
-}
 
 // Table table struct
 type Table struct {
@@ -243,6 +19,20 @@ type Table struct {
 
 // NewTable create Table instance
 func NewTable(ti *TableImage, rows []Row, caption *Cell, footer *Cell) (*Table, error) {
+	rows, cols, heights := initRows(ti, rows)
+	table := &Table{
+		caption:    caption,
+		footer:     footer,
+		rows:       rows,
+		rowsHeight: heights,
+		colsWidth:  cols,
+	}
+	table.initCaption(ti.fontCache)
+	table.initFooter(ti.fontCache)
+	return table, nil
+}
+
+func initRows(ti *TableImage, rows []Row) ([]Row, []int, []int) {
 	var maxCols int
 	for _, row := range rows {
 		cols := len(row.Cells)
@@ -279,38 +69,39 @@ func NewTable(ti *TableImage, rows []Row, caption *Cell, footer *Cell) (*Table, 
 		row.Cells = rowCells
 		updatedRows = append(updatedRows, row)
 	}
-	table := &Table{
-		caption:    caption,
-		footer:     footer,
-		rows:       updatedRows,
-		rowsHeight: heights,
-		colsWidth:  cols,
+	return updatedRows, cols, heights
+}
+
+func (r *Table) initCaption(cache draw2d.FontCache) {
+	if r.caption == nil {
+		return
 	}
-	if caption != nil {
-		if caption.Style == nil {
-			caption.Style = DefaultCaptionStyle()
-			caption.Style.LoadFont(ti.fontCache)
-		} else {
-			caption.Style.Inherit(DefaultCaptionStyle(), ti.fontCache)
-		}
-		if caption.Style.MaxWidth == 0 || caption.Style.MaxWidth > table.Size().X {
-			caption.Style.MaxWidth = table.Size().X - caption.Style.BorderPadding().Size().X
-		}
-		table.captionSize = caption.Size()
+	if r.caption.Style == nil {
+		r.caption.Style = DefaultCaptionStyle()
+		r.caption.Style.LoadFont(cache)
+	} else {
+		r.caption.Style.Inherit(DefaultCaptionStyle(), cache)
 	}
-	if footer != nil {
-		if footer.Style == nil {
-			footer.Style = DefaultFooterStyle()
-			footer.Style.LoadFont(ti.fontCache)
-		} else {
-			footer.Style.Inherit(DefaultFooterStyle(), ti.fontCache)
-		}
-		if footer.Style.MaxWidth == 0 || footer.Style.MaxWidth > table.Size().X {
-			footer.Style.MaxWidth = table.Size().X - footer.Style.BorderPadding().Size().X
-		}
-		table.footerSize = footer.Size()
+	if r.caption.Style.MaxWidth == 0 || r.caption.Style.MaxWidth > r.Size().X {
+		r.caption.Style.MaxWidth = r.Size().X - r.caption.Style.BorderPadding().Size().X
 	}
-	return table, nil
+	r.captionSize = r.caption.Size()
+}
+
+func (r *Table) initFooter(cache draw2d.FontCache) {
+	if r.footer == nil {
+		return
+	}
+	if r.footer.Style == nil {
+		r.footer.Style = DefaultFooterStyle()
+		r.footer.Style.LoadFont(cache)
+	} else {
+		r.footer.Style.Inherit(DefaultFooterStyle(), cache)
+	}
+	if r.footer.Style.MaxWidth == 0 || r.footer.Style.MaxWidth > r.Size().X {
+		r.footer.Style.MaxWidth = r.Size().X - r.footer.Style.BorderPadding().Size().X
+	}
+	r.footerSize = r.footer.Size()
 }
 
 // Size get bound size
@@ -390,98 +181,4 @@ func (r Table) CellBounds(rowIdx int, cellIdx int) image.Rectangle {
 // Rows get rows
 func (r Table) Rows() []Row {
 	return r.rows
-}
-
-// Image image setting
-type Image struct {
-	// URL image link
-	URL string `json:"url,omitempty"`
-	// Data image data
-	Data image.Image
-	// Inline display inline
-	Inline bool `json:"inline,omitempty"`
-	// Size image width/height
-	Size image.Point `json:"size,omitempty"`
-	// Align image text alignment
-	Align Align `json:"align,omitempty"`
-	// VAlign image text vertical alignment
-	VAlign VAlign `json:"valign,omitempty"`
-	// Padding image padding
-	Padding *Padding `json:"padding,omitempty"`
-}
-
-// PaddingX horizontal padding
-func (i Image) PaddingX() int {
-	if i.Padding == nil {
-		return 0
-	}
-	return i.Padding.Left + i.Padding.Right
-}
-
-// PaddingY vertical padding
-func (i Image) PaddingY() int {
-	if i.Padding == nil {
-		return 0
-	}
-	return i.Padding.Top + i.Padding.Bottom
-}
-
-// PaddingLeft left padding
-func (i Image) PaddingLeft() int {
-	if i.Padding == nil {
-		return 0
-	}
-	return i.Padding.Left
-}
-
-// PaddingTop top padding
-func (i Image) PaddingTop() int {
-	if i.Padding == nil {
-		return 0
-	}
-	return i.Padding.Top
-}
-
-// Download image data
-func (i *Image) Download() error {
-	if i.Data != nil || i.URL == "" {
-		return nil
-	}
-	resp, err := http.DefaultClient.Get(i.URL)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-	img, _, err := image.Decode(resp.Body)
-	if err != nil {
-		return err
-	}
-	i.Data = img
-	i.UpdateSize()
-	return nil
-}
-
-// UpdateSize update Size based on image bounds
-func (i *Image) UpdateSize() {
-	bounds := i.Data.Bounds()
-	if i.Size.X == 0 {
-		i.Size.X = bounds.Dx()
-	}
-	if i.Size.Y == 0 {
-		i.Size.Y = bounds.Dy()
-	}
-	scale := i.Scale()
-	i.Size.X = int(math.Round(float64(bounds.Dx()) * scale))
-	i.Size.Y = int(math.Round(float64(bounds.Dy()) * scale))
-}
-
-// BoundSize get Image width/height
-func (i Image) BoundSize() image.Point {
-	return image.Pt(i.Size.X+i.PaddingX(), i.Size.Y+i.PaddingY())
-}
-
-// Scale get image scale
-func (i Image) Scale() float64 {
-	bounds := i.Data.Bounds()
-	return math.Min(float64(i.Size.X)/float64(bounds.Dx()), float64(i.Size.Y)/float64(bounds.Dy()))
 }
